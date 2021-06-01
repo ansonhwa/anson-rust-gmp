@@ -2,7 +2,7 @@ use libc::{c_char, c_int, c_long, c_ulong, c_void, c_double, size_t};
 use super::rand::gmp_randstate_t;
 use super::sign::Sign;
 use std::convert::From;
-use std::mem::{uninitialized,size_of};
+use std::mem::size_of;
 use std::{fmt, hash};
 use std::cmp::Ordering::{self, Greater, Less, Equal};
 use std::str::FromStr;
@@ -127,7 +127,7 @@ impl Mpz {
 
     pub fn new() -> Mpz {
         unsafe {
-            let mut mpz = uninitialized();
+            let mut mpz = std::mem::MaybeUninit::uninit().assume_init();
             __gmpz_init(&mut mpz);
             Mpz { mpz: mpz }
         }
@@ -135,7 +135,7 @@ impl Mpz {
 
     pub fn new_reserve(n: usize) -> Mpz {
         unsafe {
-            let mut mpz = uninitialized();
+            let mut mpz = std::mem::MaybeUninit::uninit().assume_init();
             __gmpz_init2(&mut mpz, n as c_ulong);
             Mpz { mpz: mpz }
         }
@@ -190,7 +190,7 @@ impl Mpz {
         let s = CString::new(s.to_string()).map_err(|_| ParseMpzError { _priv: () })?;
         unsafe {
             assert!(base == 0 || (base >= 2 && base <= 62));
-            let mut mpz = uninitialized();
+            let mut mpz = std::mem::MaybeUninit::uninit().assume_init();
             let r = __gmpz_init_set_str(&mut mpz, s.as_ptr(), base as c_int);
             if r == 0 {
                 Ok(Mpz { mpz: mpz })
@@ -439,7 +439,7 @@ impl Mpz {
 
     pub fn one() -> Mpz {
         unsafe {
-            let mut mpz = uninitialized();
+            let mut mpz = std::mem::MaybeUninit::uninit().assume_init();
             __gmpz_init_set_ui(&mut mpz, 1);
             Mpz { mpz: mpz }
         }
@@ -459,7 +459,7 @@ pub struct ParseMpzError {
 
 impl fmt::Display for ParseMpzError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(f)
+        self.to_string().fmt(f)
     }
 }
 
@@ -468,7 +468,7 @@ impl Error for ParseMpzError {
         "invalid integer"
     }
 
-    fn cause(&self) -> Option<&'static Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         None
     }
 }
@@ -476,7 +476,7 @@ impl Error for ParseMpzError {
 impl Clone for Mpz {
     fn clone(&self) -> Mpz {
         unsafe {
-            let mut mpz = uninitialized();
+            let mut mpz = std::mem::MaybeUninit::uninit().assume_init();
             __gmpz_init_set(&mut mpz, &self.mpz);
             Mpz { mpz: mpz }
         }
